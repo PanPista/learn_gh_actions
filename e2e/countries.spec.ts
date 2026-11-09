@@ -20,6 +20,6 @@ test("displays countries returned by the list endpoint", async ({ page }) => {
 
   await expect(page).toHaveURL(/limit=2/);
   await expect(page.locator("form").nth(1).locator("pre")).toContainText(
-    "Canada",
+    "Afghanistan",
   );
 });
