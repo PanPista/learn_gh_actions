@@ -16,9 +16,14 @@ class CountriesClientError(Exception):
     """Raised when the GoREST countries API cannot provide a valid response."""
 
 
-def list_countries(page: Optional[int] = None) -> dict[str, Any]:
+def list_countries(
+    page: Optional[int] = None, page_size: int = PAGE_SIZE
+) -> dict[str, Any]:
     """Return one page of countries and its API pagination metadata."""
-    params: dict[str, int] = {"page[size]": PAGE_SIZE}
+    if isinstance(page_size, bool) or page_size < 1:
+        raise ValueError("page_size must be a positive integer.")
+
+    params: dict[str, int] = {"page[size]": page_size}
     if page is not None:
         params["page[number]"] = page
 

@@ -205,6 +205,12 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Node and Playwright
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+
 # Ruff stuff:
 .ruff_cache/
 

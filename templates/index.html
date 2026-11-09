@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Countries</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 48rem; padding: 0 1rem; }
+    form { border: 1px solid #ccc; border-radius: 0.5rem; margin: 1rem 0; padding: 1rem; }
+    label, input, button { display: block; margin-top: 0.5rem; }
+    input { padding: 0.4rem; }
+    button { padding: 0.5rem 0.8rem; }
+    .error { color: #b00020; font-weight: 600; }
+    pre { background: #f6f8fa; border-radius: 0.5rem; overflow-x: auto; padding: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Countries</h1>
+  <form method="get">
+    <h2>Find a country</h2>
+    <label for="country-code">Two-letter country code</label>
+    <input id="country-code" name="code" value="{{ country_code }}"
+           pattern="[A-Za-z]{2}" maxlength="2" placeholder="US" required>
+    <button type="submit">Get country</button>
+    {% if response_section == "country" %}
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% else %}
+        <pre aria-live="polite">{{ result | tojson(indent=2) }}</pre>
+      {% endif %}
+    {% endif %}
+  </form>
+  <form method="get">
+    <h2>List countries</h2>
+    <label for="country-limit">Number of countries (1-{{ max_countries }})</label>
+    <input id="country-limit" name="limit" type="number" min="1" max="{{ max_countries }}"
+           value="{{ limit }}" required>
+    <button type="submit">List countries</button>
+    {% if response_section == "list" %}
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% else %}
+        <pre aria-live="polite">{{ result | tojson(indent=2) }}</pre>
+      {% endif %}
+    {% endif %}
+  </form>
+</body>
+</html>

@@ -9,7 +9,7 @@ uses only the Python standard library.
 from countries_client import CountriesClientError, get_country, list_countries
 
 try:
-    countries_page = list_countries(page=2)  # Optional; requests 10 countries per page.
+    countries_page = list_countries(page=2, page_size=25)
     country_code = countries_page["data"][0]["code"]  # The caller selects a code.
     country = get_country(country_code)
 except CountriesClientError as error:
@@ -20,8 +20,39 @@ except CountriesClientError as error:
 `meta`. `get_country(code)` returns the full decoded country object. HTTP,
 network, timeout, and invalid-JSON failures raise `CountriesClientError`.
 
-## Test
+## Browser UI
+
+Start the local interface:
+
+```bash
+python3 app.py
+```
+
+Then open http://127.0.0.1:8000. You can enter a two-letter country code or
+choose how many countries (1-100) to request.
+
+## Tests
+
+Run the Python unit tests:
 
 ```bash
 python3 -m unittest discover -s tests
+```
+
+### End-to-end UI tests
+
+The Playwright tests cover both country endpoints through the browser UI with
+deterministic client responses, so they do not call the live GoREST API.
+
+Install the JavaScript dependencies and Chromium once:
+
+```bash
+npm ci
+npx playwright install chromium
+```
+
+Run the UI tests:
+
+```bash
+npm run test:ui
 ```
