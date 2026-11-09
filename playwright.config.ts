@@ -6,9 +6,9 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:8000",
     browserName: "chromium",
   },
-  webServer: {
-    command: "PYTHONPATH=. python3 tests/playwright_server.py",
-    url: "http://127.0.0.1:8000",
-    reuseExistingServer: false,
-  },
+  // webServer: {
+  //   command: "PYTHONPATH=. python3 tests/playwright_server.py",
+  //   url: "http://127.0.0.1:8000",
+  //   reuseExistingServer: false,
+  // },
 });

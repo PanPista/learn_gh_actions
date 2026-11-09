@@ -16,7 +16,6 @@ permissions:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,7 +24,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
+          cache: "pip"
 
       - name: Install dependencies
         run: python3 -m pip install -r requirements.txt
@@ -34,12 +33,20 @@ jobs:
         run: |
           python3 -m coverage run -m unittest discover -s tests
           python3 -m coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: ignore
+
   build-and-push-docker:
     needs: unit-tests
     runs-on: ubuntu-latest
     outputs:
-      image-tag: ${{ steps.image-tag.outputs.tag }}
-    
+      image-tag: ${{ steps.meta.outputs.version }}
+      full-image-name: ${{ steps.meta.outputs.tags }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,12 +54,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create image tag
-        id: image-tag
-        run: echo "tag=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -64,26 +74,22 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.image-tag.outputs.tag }}
+          # Для PR можем делать push: false, если используем local load (см. примечание ниже)
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-  
+
   ui-tests:
     needs: build-and-push-docker
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install Python dependencies
-        run: python3 -m pip install -r requirements.txt
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -91,19 +97,54 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - name: Restore Playwright browser cache
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
 
-      - name: Install JavaScript dependencies
-        run: npm ci
-
-      - name: Install Chromium
+      - name: Install Playwright Browsers & Deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS Dependencies only
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start Application Container
+        run: |
+          IMAGE_NAME="${{ needs.build-and-push-docker.outputs.full-image-name }}"
+          echo "Pulling image $IMAGE_NAME..."
+          docker pull "$IMAGE_NAME"
+          docker run -d --name app-under-test -p 8000:8000 "$IMAGE_NAME"
+          
+          echo "Waiting for app to become ready..."
+          timeout 30s bash -c 'until curl -s http://127.0.0.1:8000 > /dev/null; do sleep 1; done'
 
       - name: Run UI tests
         run: npm run test:ui
+        env:
+          BASE_URL: "http://127.0.0.1:8000"
+
+      - name: Stop Application Container
+        if: always()
+        run: docker stop app-under-test || true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
