@@ -5,6 +5,7 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["html", { outputFolder: "playwright-report", open: "never" }],
+    ["github"]
   ],
   use: {
     baseURL: "http://127.0.0.1:8000",
