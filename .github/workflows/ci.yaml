@@ -137,6 +137,13 @@ jobs:
         env:
           BASE_URL: "http://127.0.0.1:8000"
 
+      - name: Publish Playwright summary
+        if: always()
+        uses: daun/playwright-report-summary@v3
+        with:
+          report-file: test-results/playwright-results.json
+          job-summary: true
+
       - name: Stop Application Container
         if: always()
         run: docker stop app-under-test || true
